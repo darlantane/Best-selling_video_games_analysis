@@ -1,10 +1,10 @@
-DROP VIEW ach_p;
+DROP VIEW ach;
 
-CREATE VIEW ach_p AS
-SELECT h.achievementid, g.title AS jeu, p.nickname, p.country, a.title, a.description, a.rarity, REPLACE(h.date_acquired, ';;;;', '') AS date_acquired
-FROM history_playstation h
-JOIN achievements_playstation a ON a.achievementid=h.achievementid
-JOIN players_playstation p ON p.playerid=h.playerid
-JOIN games_playstation g ON g.gameid=a.gameid;
+CREATE VIEW ach AS
+SELECT h.achievementid, a.title, g.title as game_title, g.genres, pl.nickname, pl.country, a.rarity, a.points, h.date_acquired, h.platform
+FROM history h
+JOIN achievements a ON a.achievementid=h.achievementid
+JOIN players pl ON pl.playerid=h.playerid
+JOIN games g ON g.gameid=a.gameid;
 
-SELECT * FROM ach_p;
+SELECT * FROM ach;
