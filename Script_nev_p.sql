@@ -1,43 +1,28 @@
-DROP VIEW nq_p;
+DROP VIEW nev;
 
-CREATE VIEW nq_p AS
-SELECT playerid, library, REPLACE(REPLACE(REPLACE(REPLACE(library, '[', '"'), ']', '"'), ',', '"'), ' ', '"') as library2 FROM purchased_games_playstation;
-
-SELECT * FROM nq_p;
-
-DROP VIEW nev_p;
-
-CREATE VIEW nev_p AS
+CREATE VIEW nev AS
+WITH pg2 AS
+(SELECT playerid, library, CONCAT('"', REPLACE(library, ', ', '""'), '"') as library2 FROM purchased_games)
 SELECT 
-    g.gameid,
-    CONCAT('"', g.gameid, '"') AS gameid_guillemets,
-    SUM((LENGTH(nq_p.library2) - LENGTH(REPLACE(nq_p.library2, gameid_guillemets, ''))) / LENGTH(gameid_guillemets)) AS nombre_exemplaires_vendus
-FROM games_playstation g
-JOIN achievements_playstation ON achievements_playstation.gameid = g.gameid
-JOIN history_playstation ON history_playstation.achievementid = achievements_playstation.achievementid
-JOIN nq_p ON nq_p.playerid = history_playstation.playerid
+g.gameid,
+CONCAT('"', g.gameid, '"') AS gameid_guillemets,
+SUM((LENGTH(pg2.library2) - LENGTH(REPLACE(pg2.library2, gameid_guillemets, ''))) / LENGTH(gameid_guillemets)) AS nev_,
+FROM games g
+JOIN achievements a ON a.gameid = g.gameid
+JOIN history h ON h.achievementid = a.achievementid
+JOIN pg2 ON pg2.playerid = h.playerid
 GROUP BY g.gameid;
 
-SELECT * FROM nev_p;
+SELECT * FROM nev;
 
-DROP VIEW games_nev_p;
+DROP view nev2;
 
-CREATE VIEW games_nev_p AS
-SELECT DISTINCT
-nev_p.gameid, g.title, g.platform, 
-REPLACE(REPLACE(g.genres, '[', ''), ']', '') AS genres_, 
-REPLACE(REPLACE(g.developers, '[', ''), ']', '') AS developers_,
-REPLACE(REPLACE(g.supported_languages, '[', ''), ']', '') AS supported_languages_, 
-g.release_date, nev_p.nombre_exemplaires_vendus,
-p.usd*nombre_exemplaires_vendus AS ca_usd,
-p.eur*nombre_exemplaires_vendus AS ca_eur,
-p.gbp*nombre_exemplaires_vendus AS ca_gbp,
-p.jpy*nombre_exemplaires_vendus AS ca_jpy,
-p.rub*nombre_exemplaires_vendus AS ca_rub
-FROM nev_p
-JOIN games_playstation g ON nev_p.gameid = g.gameid
-JOIN prices_playstation p ON nev_p.gameid = p.gameid
-JOIN achievements_playstation a ON a.gameid = g.gameid
-JOIN history_playstation h ON h.achievementid = a.achievementid;
+CREATE VIEW nev2 AS
+SELECT g.gameid, g.title, g.genres, g.platform, g.supported_languages, SUM(nev.nev_) as total_nev,
+(SUM(nev.nev_)/(SELECT SUM(nev.nev_) FROM nev)*100) AS pourcentage
+FROM games g
+JOIN nev ON nev.gameid = g.gameid
+GROUP BY g.gameid, g.title, g.genres, g.platform, g.supported_languages
+ORDER BY SUM(nev.nev_) DESC;
 
-SELECT * FROM games_nev_p;
+SELECT * FROM nev2;
